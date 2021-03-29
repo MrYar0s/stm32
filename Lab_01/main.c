@@ -82,17 +82,6 @@ __attribute__((naked)) static void delay(void)
     asm (".word 10000");
 }
 
-__attribute__((naked)) static void delay_10ms(void)
-{
-    asm ("push {r7, lr}");
-    asm ("ldr r6, [pc, #8]");
-    asm ("sub r6, #1");
-    asm ("cmp r6, #0");
-    asm ("bne delay_10ms+0x4");
-    asm ("pop {r7, pc}");
-    asm (".word 0x10000"); //60000
-}
-
 #define A LL_GPIO_PIN_0
 #define B LL_GPIO_PIN_1
 #define C LL_GPIO_PIN_2
