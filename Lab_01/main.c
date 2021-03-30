@@ -131,9 +131,11 @@ uint32_t digit_num = 0;
 // Code for dynamic display on 7-segment indicator
 void dyn_display(uint32_t number){
 	uint32_t out = 0;
+	uint32_t move_pos = 0;
 
 	LL_GPIO_WriteOutputPort(GPIOC, POS0|POS1|POS2|POS3);
-	out = (out & ~MASK) | DECODER[(number & (0x000F << ((~POSITIONS[digit_num] & 0xe) << 1))) >> ((~POSITIONS[digit_num] & 0xe) << 1)];
+	move_pos = ((~POSITIONS[digit_num] & 0xe) << 1);
+	out = (out & ~MASK) | DECODER[(number & (0x000F << move_pos)) >> move_pos];
 	LL_GPIO_WriteOutputPort(GPIOB, out);
 	LL_GPIO_WriteOutputPort(GPIOC, POSITIONS[digit_num]);
 	digit_num = (digit_num+1) % 4;
