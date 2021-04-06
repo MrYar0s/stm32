@@ -79,7 +79,7 @@ __attribute__((naked)) static void delay(void)
     asm ("cmp r6, #0");
     asm ("bne delay+0x4");
     asm ("pop {r7, pc}");
-    asm (".word 10000");
+    asm (".word 30000");
 }
 
 #define A LL_GPIO_PIN_0
@@ -131,14 +131,13 @@ uint32_t digit_num = 0;
 // Code for dynamic display on 7-segment indicator
 void dyn_display(uint32_t number){
 	uint32_t out = 0;
-	uint32_t move_pos = 0;
 
 	LL_GPIO_WriteOutputPort(GPIOC, POS0|POS1|POS2|POS3);
-	move_pos = ((~POSITIONS[digit_num] & 0xe) << 1);
-	out = (out & ~MASK) | DECODER[(number & (0x000F << move_pos)) >> move_pos];
+	int step = (~POSITIONS[digit_num] & 0xe) << 1;
+	out = (out & ~MASK) | DECODER[(number & (0x000F << step)) >> step];
 	LL_GPIO_WriteOutputPort(GPIOB, out);
 	LL_GPIO_WriteOutputPort(GPIOC, POSITIONS[digit_num]);
-	digit_num = (digit_num+1) % 4;
+	digit_num = (digit_num + 1) % 4;
 
 }
 
@@ -166,10 +165,12 @@ int main(void)
 	
 	// Status of the button
     uint32_t status = 0;
+    uint32_t dstatus = 0;
     // Previous status of the button
     int prev = 0;
 	// Number of clicks on the button
     uint32_t clicks = 0;
+    uint32_t dclicks = 0;
 	
 	//--------------------------------------------------------------
     LL_GPIO_ResetOutputPin(GPIOC, LL_GPIO_PIN_8);
@@ -183,13 +184,23 @@ int main(void)
 		}
 		if(clicks >= 10){
 			num++;
+			LL_GPIO_TogglePin(GPIOC, LL_GPIO_PIN_8);
 			prev = 1;
 			status = 0;
 			clicks = 0;
 		}
 		if(prev){
 			if (!LL_GPIO_IsInputPinSet(GPIOA, LL_GPIO_PIN_0)){
-				prev = 0;
+				dstatus = 1;
+	        }
+	        if(dstatus){
+	        	dclicks++;
+	        	delay();
+	        }
+	        if(dclicks >= 10){
+	        	prev = 0;
+	        	dclicks = 0;
+	        	dstatus = 0;
 	        }
 	    }
 	}
