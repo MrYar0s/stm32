@@ -96,7 +96,8 @@ __attribute__((naked)) static void delay(void)
 #define POS3 LL_GPIO_PIN_3
 
 
-static const int32_t MASK = A|B|C|D|E|F|G;
+static const int32_t MASKB = A|B|C|D|E|F|G;
+static const int32_t MASKC = POS0|POS1|POS2|POS3;
 
 static const uint32_t DECODER[] = {
 	A | B | C | D | E | F,		//0
@@ -129,16 +130,25 @@ const uint32_t POSITIONS[] =
 uint32_t digit_num = 0;
 
 // Code for dynamic display on 7-segment indicator
-void dyn_display(uint32_t number){
-	uint32_t out = 0;
+void dyn_display(uint32_t number)
+{
+    uint32_t outb = 0;
+    uint32_t outc = 0;
 
-	LL_GPIO_WriteOutputPort(GPIOC, POS0|POS1|POS2|POS3);
-	int step = (~POSITIONS[digit_num] & 0xe) << 1;
-	out = (out & ~MASK) | DECODER[(number & (0x000F << step)) >> step];
-	LL_GPIO_WriteOutputPort(GPIOB, out);
-	LL_GPIO_WriteOutputPort(GPIOC, POSITIONS[digit_num]);
-	digit_num = (digit_num + 1) % 4;
+    outb = LL_GPIO_ReadOutputPort(GPIOB);
+    outc = LL_GPIO_ReadOutputPort(GPIOC);
 
+    LL_GPIO_WriteOutputPort(GPIOC, (outc & ~MASKC) |POS0|POS1|POS2|POS3);
+
+    int step = digit_num * 4;
+
+    outb = (outb & ~MASKB) | DECODER[(number & (0x000F << step)) >> step];
+    outc = (outc & ~MASKC) | POSITIONS[digit_num];
+
+    LL_GPIO_WriteOutputPort(GPIOB, outb);
+    LL_GPIO_WriteOutputPort(GPIOC, outc);
+
+    digit_num = (digit_num + 1) % 4;
 }
 
 #undef A
