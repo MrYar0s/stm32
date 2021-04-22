@@ -12,7 +12,7 @@
 
 int counter_top = 1000;
 int milliseconds = 0;
-int digit = 0;
+int digit = 0x2048;
 
 /**
   * System Clock Configuration
@@ -93,13 +93,13 @@ static void systick_config(void)
 void SysTick_Handler(void)
 {
     milliseconds++;
-    dyn_display(digit);
-    milliseconds = (milliseconds + 1) % 1000;
+    milliseconds = (milliseconds + 1) % counter_top;
     if(!milliseconds)
     {
-        digit++;
         LL_GPIO_TogglePin(GPIOC, LL_GPIO_PIN_8);
     }
+    digit;
+    dyn_display(digit);
 }
 
 #define A LL_GPIO_PIN_0
@@ -163,7 +163,6 @@ void dyn_display(uint32_t number)
     LL_GPIO_WriteOutputPort(GPIOC, (outc & ~MASKC) |POS0|POS1|POS2|POS3);
 
     int step = digit_num * 4;
-
     outb = (outb & ~MASKB) | DECODER[(number & (0x000F << step)) >> step];
     outc = (outc & ~MASKC) | POSITIONS[digit_num];
 
