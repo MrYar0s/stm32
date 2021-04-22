@@ -7,10 +7,11 @@
 #include "stm32f0xx_ll_bus.h"
 #include "stm32f0xx_ll_gpio.h"
 #include "stm32f0xx_ll_tim.h"
+#include "stm32f0xx_ll_utils.h"
+#include "stm32f0xx_ll_cortex.h"
 
-int counter_top = 1000;
-int ms = 0;
 uint32_t digit = 0;
+uint8_t status = 0;
 
 /**
   * System Clock Configuration
@@ -89,7 +90,6 @@ static const uint32_t DECODER[] =
     B | C | D | E | G,          //d
     A | D | E | F | G,          //E
     A | E | F | G,              //F
-    0                           //NaN
 };
 
 const uint32_t POSITIONS[] = 
@@ -103,9 +103,16 @@ const uint32_t POSITIONS[] =
 uint32_t digit_num = 0;
 
 // Code for dynamic display on 7-segment indicator
-
-void dyn_display(uint32_t number)
+void dec_display(uint32_t number)
 {
+    uint32_t digits[] =
+    {
+        number % 10,
+        (number / 10) % 10,
+        (number / 100) % 10,
+        (number / 1000) % 10
+    };
+
     uint32_t outb = 0;
     uint32_t outc = 0;
 
@@ -114,9 +121,7 @@ void dyn_display(uint32_t number)
 
     LL_GPIO_WriteOutputPort(GPIOC, (outc & ~MASKC) |POS0|POS1|POS2|POS3);
 
-    int step = digit_num * 4;
-
-    outb = (outb & ~MASKB) | DECODER[(number & (0x000F << step)) >> step];
+    outb = (outb & ~MASKB) | DECODER[digits[digit_num]];
     outc = (outc & ~MASKC) | POSITIONS[digit_num];
 
     LL_GPIO_WriteOutputPort(GPIOB, outb);
@@ -178,7 +183,7 @@ static void systick_config(void)
 {
     LL_InitTick(48000000, 1000);
     LL_SYSTICK_EnableIT();
-    NVIC_SetPriority(SysTick_IRQn, 1);
+    NVIC_SetPriority(SysTick_IRQn, 0);
 }
 
 static void timers_config(void)
@@ -186,31 +191,35 @@ static void timers_config(void)
     LL_GPIO_SetAFPin_0_7(GPIOA, LL_GPIO_PIN_5, LL_GPIO_AF_2);
     LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM2);
     LL_TIM_SetPrescaler(TIM2, 47999);
-    LL_TIM_SetCounterMode(TIM2, LL_TIM_COUNTERMODE_UP);
-    LL_TIM_EnableIT_UPDATE(TIM2);
-    LL_TIM_EnableCounter(TIM2);
 
-    LL_TIM_IC_SetFilter(TIM2, LL_TIM_CHANNEL_CH1, LL_TIM_IC_FILTER_FDIV16_N5);
+    LL_TIM_IC_SetFilter(TIM2, LL_TIM_CHANNEL_CH1, LL_TIM_IC_FILTER_FDIV8_N6);
     LL_TIM_IC_SetPolarity(TIM2, LL_TIM_CHANNEL_CH1, LL_TIM_IC_POLARITY_BOTHEDGE);
     LL_TIM_IC_SetActiveInput(TIM2, LL_TIM_CHANNEL_CH1, LL_TIM_ACTIVEINPUT_DIRECTTI);
     LL_TIM_IC_SetPrescaler(TIM2, LL_TIM_CHANNEL_CH1, LL_TIM_ICPSC_DIV1);
     LL_TIM_CC_EnableChannel(TIM2, LL_TIM_CHANNEL_CH1);
     LL_TIM_GenerateEvent_UPDATE(TIM2);
     LL_TIM_EnableIT_CC1(TIM2);
+    LL_TIM_EnableCounter(TIM2);
 
     NVIC_EnableIRQ(TIM2_IRQn);
-    NVIC_SetPriority(TIM2_IRQn, 0);
+    NVIC_SetPriority(TIM2_IRQn, 1);
 }
 
 void TIM2_IRQHandler(void)
 {
-    digit = LL_TIM_IC_GetCaptureCH1(TIM2);
-    LL_TIM_ClearFlag_UPDATE(TIM2);
+    if(!LL_GPIO_IsInputPinSet(GPIOA, LL_GPIO_PIN_5))
+    {
+        status = 1;
+        if(digit) digit = 0;
+    }
+    else status = 0;
+    LL_TIM_ClearFlag_CC1(TIM2);
 }
 
 void SysTick_Handler(void)
 {
-    dyn_display(digit);
+    if(status) digit++;
+    dec_display(digit);
 }
 
 int main(void)
